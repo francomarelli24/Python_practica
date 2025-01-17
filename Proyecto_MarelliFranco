@@ -1,0 +1,280 @@
+#Proyecto Integrador Final - Marelli Franco
+#Curso Introducción a Python - Talent Tech 
+
+#Importamos el módulo de SQL
+import sqlite3
+from colorama import init, Fore, Back, Style
+init(autoreset=True)
+
+
+def saludo():
+    nombre = input("Hola! Por favor, indicá tu nombre: ")
+    return print(f"Hola {nombre}!\n")
+
+#Creamos la tabla de inventario de productos mediante una base de datos
+def crear_tabla_inventario():
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor() #Nuestro objeto navegador para interactuar con la tabla
+
+    #Creamos la tabla
+    cursor.execute("""CREATE TABLE IF NOT EXISTS Productos(
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   Nombre TEXT NOT NULL,
+                   Descripción TEXT NOT NULL,
+                   Cantidad INTEGER,
+                   Precio REAL NOT NULL,
+                   Categoría TEXT) """)   
+
+    #Para guardar los cambios
+    conexion.commit()
+    conexion.close()
+
+
+#Creamos la funcion de registrar_productos
+
+def registrar_productos():
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor()
+    
+    print("Para volver para atrás, escriba 'cancelar'. ")
+
+    nombre = input("Introduzca el nombre del producto: ")
+    if nombre.lower() == "cancelar":
+        print("Cancelando")
+        return
+
+    descripcion = input("Describa el producto: ")
+    if descripcion.lower() == "cancelar":
+        print("Cancelando")
+        return
+    
+    try:
+        cantidad = input("Ingrese la cantidad: ")
+        if cantidad.lower() == 'cancelar':
+            print(Fore.RED + "Cancelando y regresando al menú principal..." + Fore.RESET)
+            return
+        cantidad = int(cantidad)
+
+        precio = input("Coloque el precio: ")
+        if precio.lower() == 'cancelar':
+            print("Volviendo al menú principal")
+            return
+        precio = float(precio)
+
+        categoria = input("Ingrese la categoría: ")
+        if categoria.lower() == "cancelar":
+            print("Saliendo al menú principal")
+            return
+        
+        cursor.execute("INSERT INTO Productos (Nombre, Descripción, Cantidad, Precio, Categoría) VALUES (?, ?, ?, ?, ?)",
+                       (nombre, descripcion, cantidad, precio, categoria))
+        conexion.commit()
+        print(Fore.GREEN + "\nProducto registrado exitosamente"+ Fore.RESET)
+    
+    except ValueError:
+        print("Error: Ingrese un número válido para cantidad y precio.")
+    
+    conexion.close()
+    input("\nPresione Enter para volver al menú principal...")
+
+
+
+#Mostrar datos del inventario
+#Veremos los registros de la tabla
+#La clave es SELECT*FROM
+
+def visualizacion_productos():
+    #Conectamos a la BD
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor()
+
+    
+    #Recuperar todos los registros del inventario
+    cursor.execute("SELECT * FROM Productos") #Primero la conexión la BD y creamos el cursor
+    tabla = cursor.fetchall() ##Obtenemos una lista con los resultados, hacemos un bucle para recorrer las tuplas
+
+    #Verificar si la tabla tiene registros
+    if tabla:
+        print("Lista de productos: ")
+        for registro in tabla:
+            print("ID: ", registro[0], "Nombre: ", registro[1],
+                  "Descripción: ", registro[2], "Cantidad: ",registro[3], 
+                  "Precio: ",registro[4], "Categoría: ", registro[5])
+    else:
+        print("No hay registros en Productos.")
+
+
+#Actualización
+def actualizacion_productos():
+    #Conectar a la BD
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor()
+
+    print("Para regresar al menú principal en cualquier momento, escriba 'cancelar'.")
+
+    #Pedir la nueva cantidad disponible del producto usando el ID
+    id = input("Introduzca el ID del producto que desee actualizar: ")
+    if id.lower() == "cancelar":
+        print(Fore.RED + "Cancelando y regresando al menú principal" + Fore.RESET)
+        return
+    
+    try:
+        nueva_cantidad_input = input("Ingrese la nueva cantidad del producto: ")
+        if nueva_cantidad_input.lower() == "cancelar":
+            print("Cancelando y saliendo al menú principal")
+            return
+        nueva_cantidad = int(nueva_cantidad_input)
+
+        # Ejecutar la consulta de actualización
+        cursor.execute("UPDATE Productos SET Cantidad = ? WHERE id = ?", (nueva_cantidad, id))
+
+        # Verificar si se realizó algún cambio
+        if cursor.rowcount > 0:
+            print("La cantidad del producto ID", id, "ha sido actualizada con éxito a", nueva_cantidad)
+        else:
+            print("No se encontró un producto con ese ID")
+
+        # Guardamos los cambios
+        conexion.commit()
+
+    except ValueError:
+        print("Error: Ingrese un número válido para la cantidad.")
+
+    # Cerrar la conexión
+    conexion.close()
+  
+#Buscar Datos.
+
+#Recuperar los datos de un producto
+
+def buscar_producto():
+    # Inicializar colorama
+    init()
+
+    # Conectar a la base de datos
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor()
+
+    print("Para volver al menú principal, escriba 'cancelar'.")
+
+    try:
+        # Pedir el ID del producto que se desea buscar
+        id = input("Indique el ID del que se desea buscar: ")
+        if id.lower() == 'cancelar':
+            print(Fore.RED + "Volviendo al menú principal" + Fore.RESET)
+            return
+        id = int(id)
+
+        # Ejecutar la consulta de búsqueda
+        cursor.execute("SELECT * FROM Productos WHERE id = ?", (id,))
+        resultado = cursor.fetchone()
+
+        # Verificar si se encontró el registro
+        if resultado:
+            print("Información del producto encontrado: ")
+            print("ID:", resultado[0])
+            print("Nombre:", resultado[1])
+            print("Descripción:", resultado[2])
+        else:
+            print("No se encontró un producto con ese ID")
+
+    except ValueError:
+        print(Fore.RED + "Error: Ingrese un ID válido." + Fore.RESET)
+
+    finally:
+        # Cerrar la conexión
+        conexion.close()
+
+
+#Eliminar productos
+
+def eliminar_productos():
+
+    #Conectar a la BD
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor()
+
+    print("Para volver atrás, escriba 'cancelar'")
+
+    #Pedimos el ID del producto a eliminar.
+    id = input("Por favor, introduzca el ID del producto que desea eliminar: ")
+    
+    if id.lower() == "cancelar":
+        print(Fore.RED + "Saliendo al menú principal" + Fore.RESET)
+        return
+
+    #Ejecutar la consulta para la eliminacion
+    cursor.execute("DELETE FROM Productos WHERE id = ?", (id, ))
+
+    #Verificar si se eliminó algún registro
+    if cursor.rowcount > 0:
+        print("El producto con ID", id, "ha sido eliminado.")
+    else:
+        print("No se encontró un producto con ese nombre")
+
+    #Guardamos
+    conexion.commit()
+
+    #Cerramos
+    conexion.close()
+
+
+#Registros que cumplen con un criterio específico
+def bajo_stock():
+
+    #Conectamos a la BD
+    conexion = sqlite3.connect("inventario.db")
+    cursor = conexion.cursor()
+
+    #Ejecutar la consulta para obtener el reporte
+    cursor.execute("SELECT * FROM Productos WHERE Cantidad < 10")
+    tabla = cursor.fetchall()
+
+    #Verificar si hay resultados y mostrarlos
+
+    if tabla:
+        print("\nEstos son los productos con una cantidad baja de stock")
+        for filas in tabla:
+            print("ID:", filas[0], "Nombre:",filas[1], "Descripción",filas[2], "Cantidad",filas[3], "Precio",filas[4], "Categoría",filas[5])
+    else:
+        print("\nNo hay productos con baja cantidad de stock.")
+    
+    conexion.commit()
+    conexion.close()
+
+#Función para menú principal:
+def menu_principal():
+    while True:
+        print(f"{Style.BRIGHT + Fore.BLUE+Back.WHITE}MENU STOCK DE PRODUCTOS")
+        print(Style.BRIGHT + Fore.CYAN + "1. Registrar productos")
+        print(Style.BRIGHT + Fore.CYAN + "2. Visualizar productos")
+        print(Style.BRIGHT + Fore.CYAN +"3. Actualizar cantidad de stock")
+        print(Style.BRIGHT + Fore.CYAN + "4. Buscar producto")
+        print(Style.BRIGHT + Fore.CYAN +"5. Eliminar producto")
+        print(Style.BRIGHT + Fore.CYAN +"6. Reporte de producto con bajo stock")
+        print(Style.BRIGHT + Fore.RED +"7. Salir")
+        
+        
+        opcion = input(Fore.YELLOW + "\nSeleccione una opción: ")
+
+        if opcion == "1":
+            registrar_productos()
+        elif opcion =="2":
+            visualizacion_productos()
+        elif opcion == "3":
+            actualizacion_productos()
+        elif opcion == "4":
+            buscar_producto()
+        elif opcion == "5":
+            eliminar_productos()
+        elif opcion == "6":
+            bajo_stock()
+        elif opcion == "7":
+            print(Fore.RED + "Saliendo del programa!")
+            break
+        else:
+            print(Back.RED + Fore.WHITE + "Opción inválida. Intente de nuevo\n") 
+
+saludo()
+crear_tabla_inventario()
+menu_principal()
